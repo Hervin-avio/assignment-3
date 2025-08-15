@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Form with Random API Info</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+    .product-card img {
+        width: 100%;
+        height: 200px;
+        object-fit: contain;
+        background-color: #f0f0f0;
+        border-radius: 5px;
+    }
+    .product-card {
+        width: 100%;
+        max-width: 400px; /* sama dengan form */
+    }
+</style>
+</head>
+<body class="bg-light p-4">
+
+<div class="container">
+    <div class="row">
+        <!-- Form -->
+        <div class="col-md-4">
+            <div class="card p-3 mb-4">
+                <h5 class="mb-3">Product Information</h5>
+                <form id="productForm" novalidate>
+                    <div class="mb-2">
+                        <label class="form-label">Product Name</label>
+                        <input type="text" class="form-control" id="productName" required>
+                        <div class="invalid-feedback">Please enter product name.</div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Stock Status</label>
+                        <select class="form-select" id="stockStatus" required>
+                            <option value="">Select...</option>
+                            <option value="In stock">In stock</option>
+                            <option value="Out of stock">Out of stock</option>
+                        </select>
+                        <div class="invalid-feedback">Please select stock status.</div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Price</label>
+                        <input type="number" class="form-control" id="price" required>
+                        <div class="invalid-feedback">Please enter price.</div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="description" required></textarea>
+                        <div class="invalid-feedback">Please enter description.</div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Quantity</label>
+                        <input type="number" class="form-control" id="quantity" required>
+                        <div class="invalid-feedback">Please enter quantity.</div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Color</label>
+                        <input type="text" class="form-control" id="color" required>
+                        <div class="invalid-feedback">Please enter color.</div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Material</label>
+                        <input type="text" class="form-control" id="material" required>
+                        <div class="invalid-feedback">Please enter material.</div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Brand</label>
+                        <input type="text" class="form-control" id="brand" required>
+                        <div class="invalid-feedback">Please enter brand.</div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Image URL</label>
+                        <input type="url" class="form-control" id="imageUrl" required>
+                        <div class="invalid-feedback">Please enter image URL.</div>
+                    </div>
+                    <div class="mt-2">
+                        <button type="submit" class="btn btn-primary w-100">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Product List -->
+        <div class="col-md-8 d-flex flex-wrap gap-3">
+            <div id="productList" class="d-flex flex-wrap gap-3 w-100"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+let editIndex = -1;
+
+document.addEventListener("DOMContentLoaded", () => {
+    loadProducts();
+    document.getElementById("stockStatus").addEventListener("change", toggleQuantity);
+    toggleQuantity();
+});
+
+function toggleQuantity() {
+    const qty = document.getElementById("quantity");
+    if(document.getElementById("stockStatus").value === "Out of stock") {
+        qty.disabled = true;
+        qty.value = 0;
+    } else {
+        qty.disabled = false;
+    }
+}
+
+document.getElementById("productForm").addEventListener("submit", async function(e) {
+    e.preventDefault();
+
+    if (!this.checkValidity()) {
+        this.classList.add('was-validated');
+        return;
+    }
+
+    let product = {
+        name: document.getElementById("productName").value,
+        stock: document.getElementById("stockStatus").value,
+        price: document.getElementById("price").value,
+        description: document.getElementById("description").value,
+        quantity: document.getElementById("quantity").value,
+        color: document.getElementById("color").value,
+        material: document.getElementById("material").value,
+        brand: document.getElementById("brand").value,
+        image: document.getElementById("imageUrl").value
+    };
+
+    try {
+        let randomId = Math.floor(Math.random() * 100) + 1;
+        let res = await fetch(`https://jsonplaceholder.typicode.com/posts/${randomId}`);
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        let apiData = await res.json();
+        product.apiInfoTitle = apiData.title;
+        product.apiInfoBody = apiData.body;
+    } catch (err) {
+        product.apiInfoTitle = "No extra info available";
+        product.apiInfoBody = "No additional description";
+        console.error("Fetch API failed:", err);
+    }
+
+    let products = JSON.parse(localStorage.getItem("products")) || [];
+    if (editIndex === -1) {
+        products.push(product);
+    } else {
+        products[editIndex] = product;
+        editIndex = -1;
+    }
+    localStorage.setItem("products", JSON.stringify(products));
+
+    this.reset();
+    this.classList.remove("was-validated");
+    toggleQuantity();
+    loadProducts();
+});
+
+function loadProducts() {
+    const list = document.getElementById("productList");
+    list.innerHTML = "";
+    let products = JSON.parse(localStorage.getItem("products")) || [];
+
+    products.forEach((p, i) => {
+        list.innerHTML += `
+        <div class="card p-3 product-card mb-3">
+            <h4 class="mt-2">${p.name}</h4>
+            <img src="${p.image}" class="img-fluid" alt="${p.name}">            
+            <span class="${p.stock === 'In stock' ? 'text-success' : 'text-danger'}">${p.stock}</span>
+            <p>Rp ${Number(p.price).toLocaleString('id-ID')}</p>
+            <p>${p.description}</p>
+            <p><strong>Quantity:</strong> ${p.quantity}</p>
+            <p><strong>Color:</strong> ${p.color}</p>
+            <p><strong>Material:</strong> ${p.material}</p>
+            <p><strong>Brand:</strong> ${p.brand}</p>
+            <hr>
+            <h6>Additional Info from API:</h6>
+            <p><strong>Title:</strong> ${p.apiInfoTitle}</p>
+            <p><strong>Description:</strong> ${p.apiInfoBody}</p>
+            <div class="d-flex gap-2">
+                <button class="btn btn-danger btn-sm" onclick="deleteProduct(${i})">Delete</button>
+                <button class="btn btn-warning btn-sm" onclick="editProduct(${i})">Edit</button>
+            </div>
+        </div>
+        `;
+    });
+}
+
+function deleteProduct(index) {
+    let products = JSON.parse(localStorage.getItem("products")) || [];
+    products.splice(index, 1);
+    localStorage.setItem("products", JSON.stringify(products));
+    loadProducts();
+}
+
+function editProduct(index) {
+    let products = JSON.parse(localStorage.getItem("products")) || [];
+    let p = products[index];
+    document.getElementById("productName").value = p.name;
+    document.getElementById("stockStatus").value = p.stock;
+    document.getElementById("price").value = p.price;
+    document.getElementById("description").value = p.description;
+    document.getElementById("quantity").value = p.quantity;
+    document.getElementById("color").value = p.color;
+    document.getElementById("material").value = p.material;
+    document.getElementById("brand").value = p.brand;
+    document.getElementById("imageUrl").value = p.image;
+    toggleQuantity();
+    editIndex = index;
+}
+</script>
+
+</body>
+</html>
